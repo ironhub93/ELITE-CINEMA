@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elite Cinema | Ultimate Streaming</title>
+    <style>
+        :root {
+            --primary-color: #38bdf8;
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+        }
+
+        body { background-color: var(--bg-color); color: var(--text-main); font-family: 'Segoe UI', sans-serif; margin: 0; overflow-x: hidden; }
+
+        /* Header */
+        header { background: rgba(30, 41, 59, 0.98); padding: 15px; text-align: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .nav-tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 12px; }
+        .tab-btn { background: #334155; border: none; color: white; padding: 10px 20px; border-radius: 25px; cursor: pointer; transition: 0.3s; font-weight: 500; }
+        .tab-btn.active { background: var(--primary-color); color: #0f172a; font-weight: bold; }
+
+        /* Genres Bar */
+        .genres-bar { 
+            display: flex; gap: 10px; overflow-x: auto; padding: 12px 20px; 
+            background: #111827; border-bottom: 1px solid #1e293b; scrollbar-width: none; 
+        }
+        .genres-bar::-webkit-scrollbar { display: none; }
+        .genre-pill { 
+            background: #1e293b; padding: 7px 16px; border-radius: 20px; 
+            font-size: 0.85rem; cursor: pointer; border: 1px solid #334155; white-space: nowrap; transition: 0.3s;
+        }
+        .genre-pill.active { background: var(--primary-color); color: #0f172a; border-color: var(--primary-color); }
+
+        /* Grid */
+        .movie-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; padding: 20px; max-width: 1400px; margin: 0 auto; }
+        .movie-card { background: var(--card-bg); border-radius: 12px; overflow: hidden; cursor: pointer; transition: 0.4s; position: relative; }
+        .movie-card:hover { transform: translateY(-8px); box-shadow: 0 10px 20px rgba(0,0,0,0.6); }
+        .movie-card img { width: 100%; height: 220px; object-fit: cover; }
+        .movie-info { padding: 10px; text-align: center; font-size: 0.85rem; font-weight: 500; height: 40px; display: flex; align-items: center; justify-content: center; }
+
+        /* Modal Player */
+        #video-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); z-index: 2000; justify-content: center; align-items: flex-start; overflow-y: auto; padding-top: 30px; }
+        .modal-content { width: 95%; max-width: 900px; position: relative; }
+        .video-wrapper { position: relative; padding-bottom: 56.25%; height: 0; background: #000; border-radius: 12px; overflow: hidden; }
+        .video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+        
+        /* Controls & Servers */
+        .player-controls { background: #1e293b; margin-top: 15px; padding: 20px; border-radius: 12px; border: 1px solid #334155; }
+        .control-label { display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--primary-color); font-weight: bold; }
+        
+        .server-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-bottom: 15px; }
+        .server-btn { padding: 10px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 8px; cursor: pointer; font-size: 0.8rem; }
+        .server-btn.active { background: var(--primary-color); color: #0f172a; border-color: var(--primary-color); font-weight: bold; }
+
+        .series-selectors { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        select { width: 100%; padding: 12px; background: #0f172a; color: white; border: 1px solid #334155; border-radius: 8px; outline: none; }
+
+        .close-modal { position: absolute; top: -40px; right: 0; color: white; font-size: 35px; cursor: pointer; }
+        #loader { text-align: center; padding: 30px; color: var(--primary-color); display: none; font-weight: bold; }
+
+        @media (max-width: 600px) { .movie-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 style="color: var(--primary-color); margin-bottom: 15px;">ELITE CINEMA</h1>
+        <div class="nav-tabs">
+            <button id="tab-movie" class="tab-btn active" onclick="setMode('movie')">Films</button>
+            <button id="tab-tv" class="tab-btn" onclick="setMode('tv')">Séries & TV</button>
+        </div>
+    </header>
+
+    <div class="genres-bar" id="genres-bar"></div>
+
+    <main>
+        <div class="movie-grid" id="movie-grid"></div>
+        <div id="loader">Chargement de la bibliothèque...</div>
+    </main>
+
+    <div id="video-modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closePlayer()">&times;</span>
+            <div class="video-wrapper"><iframe id="video-iframe" src="" allowfullscreen></iframe></div>
+            
+            <div class="player-controls">
+                <label class="control-label">Choisir un Serveur (Source) :</label>
+                <div class="server-grid">
+                    <button class="server-btn active" onclick="setServer(1)">Serveur 1</button>
+                    <button class="server-btn" onclick="setServer(2)">Serveur 2</button>
+                    <button class="server-btn" onclick="setServer(3)">Serveur 3</button>
+                    <button class="server-btn" onclick="setServer(4)">Serveur 4</button>
+                </div>
+
+                <div id="series-ui" style="display:none;">
+                    <div class="series-selectors">
+                        <div>
+                            <label class="control-label">Saison :</label>
+                            <select id="season-select" onchange="loadEpisodes()"></select>
+                        </div>
+                        <div>
+                            <label class="control-label">Épisode :</label>
+                            <select id="episode-select" onchange="updatePlayer()"></select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = '83bb10aede244d0c9ee71e7eb187b44f'; // ضع مفتاحك هنا
+        let mode = 'movie', page = 1, currentGenreId = '', isFetching = false, currentId = null, server = 1;
+
+        // 1. تحميل التصنيفات
+        async function loadGenres() {
+            const res = await fetch(`https://api.themoviedb.org/3/genre/${mode}/list?api_key=${API_KEY}&language=fr-FR`);
+            const data = await res.json();
+            const bar = document.getElementById('genres-bar');
+            bar.innerHTML = `<div class="genre-pill active" onclick="filterGenre('', this)">Tous</div>`;
+            data.genres.forEach(g => {
+                bar.innerHTML += `<div class="genre-pill" onclick="filterGenre('${g.id}', this)">${g.name}</div>`;
+            });
+        }
+
+        function filterGenre(id, el) {
+            currentGenreId = id; page = 1;
+            document.querySelectorAll('.genre-pill').forEach(p => p.classList.remove('active'));
+            el.classList.add('active');
+            fetchContent(true);
+        }
+
+        // 2. جلب المحتوى (أفلام/مسلسلات)
+        async function fetchContent(reset = false) {
+            if (isFetching) return;
+            isFetching = true;
+            document.getElementById('loader').style.display = 'block';
+            if (reset) document.getElementById('movie-grid').innerHTML = '';
+
+            const url = `https://api.themoviedb.org/3/discover/${mode}?api_key=${API_KEY}&language=fr-FR&sort_by=popularity.desc&page=${page}&with_genres=${currentGenreId}`;
+            
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                data.results.forEach(item => {
+                    if (!item.poster_path) return;
+                    const card = document.createElement('div');
+                    card.className = 'movie-card';
+                    card.onclick = () => openPlayer(item.id);
+                    card.innerHTML = `<img src="https://image.tmdb.org/t/p/w500${item.poster_path}"><div class="movie-info">${item.title || item.name}</div>`;
+                    document.getElementById('movie-grid').appendChild(card);
+                });
+                page++;
+            } catch (e) { console.error(e); }
+            isFetching = false;
+            document.getElementById('loader').style.display = 'none';
+        }
+
+        // 3. التحكم في المشغل والسيرفرات
+        async function openPlayer(id) {
+            currentId = id; server = 1;
+            document.getElementById('video-modal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+
+            if (mode === 'tv') {
+                document.getElementById('series-ui').style.display = 'block';
+                const res = await fetch(`https://api.themoviedb.org/3/tv/${id}?api_key=${API_KEY}&language=fr-FR`);
+                const data = await res.json();
+                document.getElementById('season-select').innerHTML = data.seasons
+                    .filter(s => s.season_number > 0)
+                    .map(s => `<option value="${s.season_number}">${s.name}</option>`).join('');
+                await loadEpisodes();
+            } else {
+                document.getElementById('series-ui').style.display = 'none';
+                updatePlayer();
+            }
+        }
+
+        async function loadEpisodes() {
+            const s = document.getElementById('season-select').value;
+            const res = await fetch(`https://api.themoviedb.org/3/tv/${currentId}/season/${s}?api_key=${API_KEY}&language=fr-FR`);
+            const data = await res.json();
+            document.getElementById('episode-select').innerHTML = data.episodes.map(e => `<option value="${e.episode_number}">Ep ${e.episode_number}: ${e.name}</option>`).join('');
+            updatePlayer();
+        }
+
+        function setServer(n) {
+            server = n;
+            document.querySelectorAll('.server-btn').forEach((b, i) => b.classList.toggle('active', i === n-1));
+            updatePlayer();
+        }
+
+        function updatePlayer() {
+            const iframe = document.getElementById('video-iframe');
+            const s = document.getElementById('season-select').value || 1;
+            const e = document.getElementById('episode-select').value || 1;
+            let url = "";
+
+            if (mode === 'movie') {
+                if(server === 1) url = `https://vidsrc.to/embed/movie/${currentId}`;
+                if(server === 2) url = `https://vidsrc.me/embed/movie/${currentId}`;
+                if(server === 3) url = `https://www.2embed.cc/embed/${currentId}`;
+                if(server === 4) url = `https://embed.su/embed/movie/${currentId}`;
+            } else {
+                if(server === 1) url = `https://vidsrc.to/embed/tv/${currentId}/${s}/${e}`;
+                if(server === 2) url = `https://vidsrc.me/embed/tv/${currentId}/${s}/${e}`;
+                if(server === 3) url = `https://www.2embed.cc/embedtv/${currentId}&s=${s}&e=${e}`;
+                if(server === 4) url = `https://embed.su/embed/tv/${currentId}/${s}/${e}`;
+            }
+            iframe.src = url;
+        }
+
+        function setMode(m) {
+            mode = m; page = 1; currentGenreId = '';
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`tab-${m}`).classList.add('active');
+            loadGenres(); fetchContent(true);
+        }
+
+        function closePlayer() {
+            document.getElementById('video-modal').style.display = 'none';
+            document.getElementById('video-iframe').src = '';
+            document.body.style.overflow = 'auto';
+        }
+
+        window.onscroll = () => { if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 800) fetchContent(); };
+
+        // البداية
+        loadGenres();
+        fetchContent();
+    </script>
+</body>
+</html>
